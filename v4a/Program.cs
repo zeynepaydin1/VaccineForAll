@@ -1,145 +1,287 @@
-﻿using System;
-using Gurobi;
+﻿using Gurobi;
+using System;
 
-class facility_cs
+class Program
 {
-    static void Main()
+    static void Main(string[] args)
     {
         try
         {
-
-            // Warehouse demand in thousands of units
-            double[] Demand = new double[] { 15, 18, 14, 20 };
-
-            // Plant capacity in thousands of units
-            double[] Capacity = new double[] { 20, 22, 17, 19, 18 };
-
-            // Fixed costs for each plant
-            double[] FixedCosts =
-                new double[] { 12000, 15000, 17000, 13000, 16000 };
-
-            // Transportation costs per thousand units
-            double[,] TransCosts =
-                new double[,] { { 4000, 2000, 3000, 2500, 4500 },
-              { 2500, 2600, 3400, 3000, 4000 },
-              { 1200, 1800, 2600, 4100, 3000 },
-              { 2200, 2600, 3100, 3700, 3200 } };
-
-            // Number of plants and warehouses
-            int nPlants = Capacity.Length;
-            int nWarehouses = Demand.Length;
-
-            // Model
             GRBEnv env = new GRBEnv();
             GRBModel model = new GRBModel(env);
 
-            model.ModelName = "facility";
+            int M = 2; //num of mobile facilities
+            int L = 9; //num of stopping locations
+            int T = 12; //num of days vaccine will take place
+            int J = 9; //num of origin loc. for mob. fac.
 
-            // Plant open decision variables: open[p] == 1 if plant p is open.
-            GRBVar[] open = new GRBVar[nPlants];
-            for (int p = 0; p < nPlants; ++p)
+            // Define the values of d[j, l]
+            double[,] d = new double[,]
             {
-                open[p] = model.AddVar(0, 1, FixedCosts[p], GRB.BINARY, "Open" + p);
-            }
+                { 0, 8.8, 23.3, 39.6, 8, 35.3, 4.6, 12.4, 31.1 },
+                { 7.8, 0, 32.7, 30.5, 11.5, 43.3, 5.1, 21, 31.2 },
+                { 23.1, 28.3, 0, 36.3, 17.5, 16.4, 30.8, 24.3, 12.7 },
+                { 38.6, 30.4, 36.9, 0, 29.1, 38.8, 29.7, 47, 21.8 },
+                { 7.7, 11.4, 17.6, 29.2, 0, 28.2, 5.8, 16.9, 20.7 },
+                { 38.2, 42.1, 16.4, 38.6, 28.1, 0, 41.4, 39.8, 17.9 },
+                { 3.3, 5.3, 22.7, 34.7, 6.4, 33.3, 0, 15.4, 25.6 },
+                { 12.7, 21.4, 24.5, 46.1, 17.7, 40.4, 15.8, 0, 32.7 },
+                { 30.5, 32.1, 12.7, 21.8, 20.4, 17.9, 33.6, 32.1, 0 }
+            };
 
-            // Transportation decision variables: how much to transport from
-            // a plant p to a warehouse w
-            GRBVar[,] transport = new GRBVar[nWarehouses, nPlants];
-            for (int w = 0; w < nWarehouses; ++w)
+            // Create a 2D list d[j, l]
+            /*
+            List<List<double>> d = new List<List<double>>();
+
+            for (int j = 0; j < J; j++)
             {
-                for (int p = 0; p < nPlants; ++p)
+                d.Add(new List<double>());
+
+                for (int l = 0; l < L; l++)
                 {
-                    transport[w, p] =
-                        model.AddVar(0, GRB.INFINITY, TransCosts[w, p], GRB.CONTINUOUS,
-                                     "Trans" + p + "." + w);
+                    d[j].Add(dValues[j, l]);
                 }
+            }*/
+
+
+            // Define nodes
+           
+
+            int[] set_M = new int[M];
+            for (int i = 0; i < M; i++)
+            {
+                set_M[i] = i;
             }
 
-            // The objective is to minimize the total fixed and variable costs
-            model.ModelSense = GRB.MINIMIZE;
-
-            // Production constraints
-            // Note that the right-hand limit sets the production to zero if
-            // the plant is closed
-            for (int p = 0; p < nPlants; ++p)
+            int[] set_L = new int[L];
+            for (int i = 0; i < L; i++)
             {
-                GRBLinExpr ptot = 0.0;
-                for (int w = 0; w < nWarehouses; ++w)
-                    ptot.AddTerm(1.0, transport[w, p]);
-                model.AddConstr(ptot <= Capacity[p] * open[p], "Capacity" + p);
+                set_L[i] = i;
             }
 
-            // Demand constraints
-            for (int w = 0; w < nWarehouses; ++w)
+            int[] set_T = new int[T];
+            for (int i = 0; i < T; i++)
             {
-                GRBLinExpr dtot = 0.0;
-                for (int p = 0; p < nPlants; ++p)
-                    dtot.AddTerm(1.0, transport[w, p]);
-                model.AddConstr(dtot == Demand[w], "Demand" + w);
+                set_T[i] = i;
             }
 
-            // Guess at the starting point: close the plant with the highest
-            // fixed costs; open all others
-
-            // First, open all plants
-            for (int p = 0; p < nPlants; ++p)
+            int[] set_J = new int[J];
+            for (int i = 0; i < J; i++)
             {
-                open[p].Start = 1.0;
+                set_J[i] = i;
             }
 
-            // Now close the plant with the highest fixed cost
-            Console.WriteLine("Initial guess:");
-            double maxFixed = -GRB.INFINITY;
-            for (int p = 0; p < nPlants; ++p)
+            // Define arcs
+            /*
+            int numArcs = numNodes * (numNodes - 1);
+            int[] from = new int[numArcs];
+            int[] to = new int[numArcs];
+            double[] distance = new double[numArcs];
+            int k = 0;
+            for (int i = 0; i < numNodes; i++)
             {
-                if (FixedCosts[p] > maxFixed)
+                for (int j = 0; j < numNodes; j++)
                 {
-                    maxFixed = FixedCosts[p];
-                }
-            }
-            for (int p = 0; p < nPlants; ++p)
-            {
-                if (FixedCosts[p] == maxFixed)
-                {
-                    open[p].Start = 0.0;
-                    Console.WriteLine("Closing plant " + p + "\n");
-                    break;
-                }
-            }
-
-            // Use barrier to solve root relaxation
-            model.Parameters.Method = GRB.METHOD_BARRIER;
-
-            // Solve
-            model.Optimize();
-
-            // Print solution
-            Console.WriteLine("\nTOTAL COSTS: " + model.ObjVal);
-            Console.WriteLine("SOLUTION:");
-            for (int p = 0; p < nPlants; ++p)
-            {
-                if (open[p].X > 0.99)
-                {
-                    Console.WriteLine("Plant " + p + " open:");
-                    for (int w = 0; w < nWarehouses; ++w)
+                    if (i != j)
                     {
-                        if (transport[w, p].X > 0.0001)
+                        from[k] = i;
+                        to[k] = j;
+                        distance[k] = Math.Sqrt(Math.Pow(i - j, 2) + Math.Pow(i - j, 2));
+                        k++;
+                    }
+                }
+            }
+            */
+
+
+            // Define variables
+            /*
+            GRBVar[] x = new GRBVar[numArcs];
+            for (int i = 0; i < numArcs; i++)
+            {
+                x[i] = model.AddVar(0.0, 1.0, distance[i], GRB.BINARY, "x" + i.ToString());
+            }*/
+
+          
+            // Create 4D decision variable y[m, j, l, t]
+            GRBVar[,,,] y1 = new GRBVar[M, J, L, T];
+
+            for (int m = 0; m < M; m++)
+            {
+                for (int j = 0; j < J; j++)
+                {
+                    for (int l = 0; l < L; l++)
+                    {
+                        for (int t = 0; t < T; t++)
                         {
-                            Console.WriteLine("  Transport " +
-                                transport[w, p].X + " units to warehouse " + w);
+                            y1[m, j, l, t] = model.AddVar(0, 1, 0, GRB.BINARY, $"y1_m{m}_j{j}_l{l}_t{t}");
                         }
                     }
                 }
-                else
+            }
+
+            GRBVar[,,,] y2 = new GRBVar[M, L, J, T];
+
+            for (int m = 0; m < M; m++)
+            {
+                for (int j = 0; j < J; j++)
                 {
-                    Console.WriteLine("Plant " + p + " closed!");
+                    for (int l = 0; l < L; l++)
+                    {
+                        for (int t = 0; t < T; t++)
+                        {
+                            y2[m, l, j, t] = model.AddVar(0, 1, 0, GRB.BINARY, $"y2_m{m}_l{l}_j{j}_t{t}");
+                        }
+                    }
                 }
             }
 
-            // Dispose of model and env
+
+            /*
+
+            // Define objective function
+            GRBLinExpr expr = new GRBLinExpr();
+            for (int i = 0; i < numArcs; i++)
+            {
+                expr.AddTerm(distance[i], x[i]);
+            }
+            model.SetObjective(expr, GRB.MINIMIZE);
+            */
+            
+            GRBLinExpr obj = 0;
+            for (int m = 0; m < M; m++)
+            {
+                for (int j = 0; j < J; j++)
+                {
+                    for (int l = 0; l < L; l++)
+                    {
+                        for (int t = 0; t < T; t++)
+                        {
+                            obj += d[j, l] * y2[m, j, l, t];
+                        }
+                    }
+                    for (int l = 0; l < L; l++)
+                    {
+                        for (int t = 0; t < T; t++)
+                        {
+                            obj += d[l, j] * y1[m, l, j, t];
+                        }
+                    }
+                }
+            }
+            model.SetObjective(obj, GRB.MINIMIZE);
+
+
+
+
+            // Define constraints
+            /*
+            for (int i = 0; i < numNodes; i++)
+            {
+                GRBLinExpr expr1 = new GRBLinExpr();
+                for (int j = 0; j < numArcs; j++)
+                {
+                    if (from[j] == i)
+                    {
+                        expr1.AddTerm(1.0, x[j]);
+                    }
+                }
+                model.AddConstr(expr1, GRB.EQUAL, 1.0, "out_" + i.ToString());
+
+                GRBLinExpr expr2 = new GRBLinExpr();
+                for (int j = 0; j < numArcs; j++)
+                {
+                    if (to[j] == i)
+                    {
+                        expr2.AddTerm(1.0, x[j]);
+                    }
+                }
+                model.AddConstr(expr2, GRB.EQUAL, 1.0, "in_" + i.ToString());
+            }*/
+
+            for (int m = 0; m < M; m++)
+            {
+                for (int j = 0; j < J; j++)
+                {
+                    for (int t = 0; t < T; t++)
+                    {
+                        GRBLinExpr expr = 0;
+                        for (int l = 0; l < L; l++)
+                        {
+                            expr += y2[m, l, j, t];
+                        }
+                        model.AddConstr(expr == 1, $"cons1_m{m}_j{j}_t{t}");
+                    }
+                }
+            }
+
+            for (int m = 0; m < M; m++)
+            {
+                for (int j = 0; j < J; j++)
+                {
+                    for (int t = 0; t < T; t++)
+                    {
+                        GRBLinExpr expr = 0;
+                        for (int l = 0; l < L; l++)
+                        {
+                            expr += y1[m, j, l, t];
+                        }
+                        model.AddConstr(expr == 1, $"cons2_m{m}_j{j}_t{t}");
+                    }
+                }
+            }
+
+            for (int m = 0; m < M; m++)
+            {
+                for (int l = 0; l < L; l++)
+                {
+                    for (int t = 0; t < T; t++)
+                    {
+                        GRBLinExpr lhs = 0;
+                        GRBLinExpr rhs = 0;
+
+                        // Sum over j in J union L y[m, j, l, t]
+                        for (int j = 0; j < J; j++)
+                        {
+                            lhs += y1[m, j, l, t];
+                            lhs += y2[m, l, j, t]; // Sum over l in L
+                        }
+
+                        // Sum over j in J union L y[m, l, j, t]
+                        for (int j = 0; j < J; j++)
+                        {
+                            rhs += y2[m, l, j, t];
+                            rhs += y1[m, j, l, t]; // Sum over l in L
+                        }
+
+                        // Add constraint: sum over j in J union L y[m, j, l, t] - sum over j in J union L y[m, l, j, t] = 0
+                        model.AddConstr(lhs - rhs == 0, $"flow_balance_m{m}_l{l}_t{t}");
+                    }
+                }
+            }
+
+
+
+
+
+
+            // Optimize model
+            model.Optimize();
+
+            // Print solution
+            Console.WriteLine("Objective value: " + model.ObjVal);
+            /*
+            for (int i = 0; i < numArcs; i++)
+            {
+                if (x[i].X > 0.5)
+                {
+                    Console.WriteLine("x[" + from[i].ToString() + "," + to[i].ToString() + "] = " + x[i].X);
+                }
+            }
+            */
+            // Dispose of model and environment
             model.Dispose();
             env.Dispose();
-
         }
         catch (GRBException e)
         {
