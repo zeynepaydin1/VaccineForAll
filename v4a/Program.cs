@@ -157,14 +157,14 @@ class Program
                     {
                         for (int t = 0; t < T; t++)
                         {
-                            obj += d[j, l] * y2[m, j, l, t];
+                            obj += d[j, l] * y1[m, j, l, t];
                         }
                     }
                     for (int l = 0; l < L; l++)
                     {
                         for (int t = 0; t < T; t++)
                         {
-                            obj += d[l, j] * y1[m, l, j, t];
+                            obj += d[l, j] * y2[m, l, j, t];
                         }
                     }
                 }
