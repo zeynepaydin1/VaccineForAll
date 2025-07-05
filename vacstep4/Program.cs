@@ -128,7 +128,7 @@ namespace VaccineRouting
             string? ln; int r = -1;
             while ((ln = sr.ReadLine()) != null)
             {
-                if (++r == 0) continue; 
+                if (++r == 0) continue;
                 var tk = ln.Split('\t', StringSplitOptions.TrimEntries);
                 for (int c = 1; c < tk.Length; c++)
                     if (!string.IsNullOrWhiteSpace(tk[c]))
@@ -499,7 +499,7 @@ namespace VaccineRouting
                 bool yes = false;
                 for (int s = 0; s < P1_S && !yes; s++)
                     if (p1.Wval[i, week, s] > 0.5) yes = true;
-                if (yes) groupIds.Add(i + 1);  
+                if (yes) groupIds.Add(i + 1);
             }
             int G = groupIds.Count;
             cilWeek = new int[G, P1_L];
@@ -523,14 +523,14 @@ namespace VaccineRouting
             string wTag = (week + 1).ToString(CultureInfo.InvariantCulture);
 
             WriteMatrixWithHeader(Path.Combine(OutputDir, $"nis_w{wTag}_maxtsl.txt"),
-                                  nisWeek,  
-                                  groupIds,   
-                                  P1_S);     
+                                  nisWeek,
+                                  groupIds,
+                                  P1_S);
 
             WriteMatrixWithHeader(Path.Combine(OutputDir, $"cil_w{wTag}_maxtsl.txt"),
-                                  cilWeek,   
+                                  cilWeek,
                                   groupIds,
-                                  P1_L);           
+                                  P1_L);
 
 
             // PRINT allowed locations
@@ -752,7 +752,7 @@ namespace VaccineRouting
             var rx = new Regex(@"^y_m(\d+)_j(\d+)_l(\d+)_t(\d+)\s*=\s*1$",
                                RegexOptions.Compiled);
 
-            for (int w = 0; w < P1_T; w++)    
+            for (int w = 0; w < P1_T; w++)
             {
                 string f = Path.Combine(OutputDir, $"week{w + 1}.txt");
                 if (!File.Exists(f)) continue;
@@ -767,7 +767,7 @@ namespace VaccineRouting
                     int lId = int.Parse(m.Groups[3].Value);
                     int tLocal = int.Parse(m.Groups[4].Value);
 
-                    int globalT = w * P2_T + tLocal; 
+                    int globalT = w * P2_T + tLocal;
                     arcs.Add((mId, jId, lId, globalT));
                 }
             }
@@ -785,11 +785,11 @@ namespace VaccineRouting
         {
 
             const int M = P3_M, L = P3_L, T = P3_T, J = P3_J, S = P3_S, I = P3_I, K = P3_K;
-            const int SETUP_MIN = P3_StopMin;        
-            const int DAY_LIMIT = P3_DayLimit;      
-            const int THETA = P3_theta;             
+            const int SETUP_MIN = P3_StopMin;
+            const int DAY_LIMIT = P3_DayLimit;
+            const int THETA = P3_theta;
             double[] p = { 1.0 / 3, 1.0 / 3, 1.0 / 3 };
-            int[] v2 = { 500, 500 };  
+            int[] v2 = { 500, 500 };
             int[] alpha = BuildAlpha();        // 1 for i < 68, else 2
 
             using var env = new GRBEnv();
@@ -797,7 +797,7 @@ namespace VaccineRouting
 
             var y = new GRBVar[M, J, L, T];
             var W = new GRBVar[I, M, T, S];
-            var U = new GRBVar[J, M, T]; 
+            var U = new GRBVar[J, M, T];
             var UU = new GRBVar[I];
             var B = new GRBVar[I, K];
 
@@ -1049,7 +1049,7 @@ namespace VaccineRouting
             model.SetObjective(2 * tslref + tsltc, GRB.MAXIMIZE);
 
             // Dynamic hash set calculation
-            HashSet<(int, int, int, int)> fixedArcs = BuildFixedArcs(); 
+            HashSet<(int, int, int, int)> fixedArcs = BuildFixedArcs();
 
             for (int m = 0; m < M; m++)
                 for (int j = 0; j < J; j++)
@@ -1068,7 +1068,7 @@ namespace VaccineRouting
 
             // Optimization
             model.Parameters.NoRelHeurTime = 60;
-            model.Parameters.TimeLimit = P3_TimeLimit; 
+            model.Parameters.TimeLimit = P3_TimeLimit;
             model.Optimize();
 
             if (model.Status == GRB.Status.INF_OR_UNBD)
