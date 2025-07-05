@@ -440,6 +440,7 @@ namespace VaccineRouting
             int type,
             double rhs
         )
+
         {
             // 1) compute denom exactly as in your standalone code
             double denom = 0.0;
@@ -1065,7 +1066,7 @@ namespace VaccineRouting
                                 y[m, j, l, t].LB = 0;
                                 y[m, j, l, t].UB = 0;
                             }
-
+            
             // Optimization
             model.Parameters.NoRelHeurTime = 60;
             model.Parameters.TimeLimit = P3_TimeLimit;
