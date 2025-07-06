@@ -140,15 +140,27 @@ namespace VaccineRouting
         private static double[,] LoadDblMatrix(string path, int maxR, int maxC)
         {
             var m = new double[maxR, maxC];
+            var wsSplit = new Regex(@"\s+");                 // ← TAB or ≥1 spaces
+
             using var sr = new StreamReader(path);
             string? ln; int r = -1;
+
             while ((ln = sr.ReadLine()) != null)
             {
-                if (++r == 0) continue;
-                var tk = ln.Split('\t', StringSplitOptions.TrimEntries);
-                for (int c = 1; c < tk.Length; c++)
-                    if (!string.IsNullOrWhiteSpace(tk[c]))
-                        m[r - 1, c - 1] = double.Parse(tk[c], CultureInfo.InvariantCulture);
+                if (++r == 0) continue;                      // skip header row
+                if (string.IsNullOrWhiteSpace(ln)) { --r; continue; }
+
+                string[] tk = wsSplit.Split(ln.Trim());      // split on *any* white-space
+                /*  tk[0]   = row-ID  (1…225)
+                    tk[1]   … tk[maxC]  = the numbers we want                 */
+
+                for (int c = 1; c <= maxC && c < tk.Length; ++c)
+                {
+                    if (double.TryParse(tk[c], NumberStyles.Float,
+                                        CultureInfo.InvariantCulture, out double v))
+                        m[r - 1, c - 1] = v;
+                    // else: log / ignore bad token instead of crashing
+                }
             }
             return m;
         }
@@ -440,7 +452,6 @@ namespace VaccineRouting
             int type,
             double rhs
         )
-
         {
             // 1) compute denom exactly as in your standalone code
             double denom = 0.0;
@@ -1066,7 +1077,7 @@ namespace VaccineRouting
                                 y[m, j, l, t].LB = 0;
                                 y[m, j, l, t].UB = 0;
                             }
-            
+
             // Optimization
             model.Parameters.NoRelHeurTime = 60;
             model.Parameters.TimeLimit = P3_TimeLimit;
